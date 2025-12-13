@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Précis Challenge{% endblock %}
+
+{% block content %}
+<header>
+    <h1>📝 Précis Writing Challenge</h1>
+    <p>Welcome back, {{ current_user.username }}! Test your summarization skills with AI-powered evaluation</p>
+</header>
+
+<!-- Analytics Section -->
+<div class="analytics-section">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-value">{{ "%.1f"|format(stats.avg_total_score) }}/10</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value">{{ stats.total_attempts }}</div>
+            <div class="stat-label">Total Attempts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value">{{ stats.skill_level }}</div>
+            <div class="stat-label">Skill Level</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-value">{{ "%.1f"|format(stats.avg_semantic) }}/3</div>
+            <div class="stat-label">Semantic Avg</div>
+        </div>
+    </div>
+    
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>📊 Performance Overview</h3>
+            <canvas id="performanceChart" width="400" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>📈 Progress Trend</h3>
+            <canvas id="progressChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <div class="skills-breakdown">
+        <div class="skills-header">
+            <h3>🎯 Skills Breakdown</h3>
+            <button id="clear-history-btn" class="btn btn-danger">🗑️ Clear History</button>
+        </div>
+        <div class="skill-bars">
+            <div class="skill-item">
+                <span>Semantic Similarity</span>
+                <div class="skill-bar">
+                    <div class="skill-progress" style="width: {{ (stats.avg_semantic/3*100)|round }}%"></div>
+                </div>
+                <span>{{ "%.1f"|format(stats.avg_semantic) }}/3</span>
+            </div>
+            <div class="skill-item">
+                <span>AI Comparison</span>
+                <div class="skill-bar">
+                    <div class="skill-progress" style="width: {{ (stats.avg_ai/4*100)|round }}%"></div>
+                </div>
+                <span>{{ "%.1f"|format(stats.avg_ai) }}/4</span>
+            </div>
+            <div class="skill-item">
+                <span>Grammar Quality</span>
+                <div class="skill-bar">
+                    <div class="skill-progress" style="width: {{ (stats.avg_grammar/2*100)|round }}%"></div>
+                </div>
+                <span>{{ "%.1f"|format(stats.avg_grammar) }}/2</span>
+            </div>
+            <div class="skill-item">
+                <span>Length Control</span>
+                <div class="skill-bar">
+                    <div class="skill-progress" style="width: {{ (stats.avg_length/1*100)|round }}%"></div>
+                </div>
+                <span>{{ "%.1f"|format(stats.avg_length) }}/1</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<main>
+    <!-- Start Section -->
+    <div id="start-section" class="section">
+        <div class="card">
+            <h2>Ready to Challenge Yourself?</h2>
+            <p>Write a concise précis of a given paragraph and get instant AI feedback on your writing skills.</p>
+            <button id="start-btn" class="btn btn-primary">Start Challenge</button>
+        </div>
+    </div>
+
+    <!-- Challenge Section -->
+    <div id="challenge-section" class="section hidden">
+        <div class="card">
+            <h3>📖 Original Paragraph</h3>
+            <div id="original-text" class="text-display"></div>
+            <div class="word-count">Words: <span id="word-count">0</span></div>
+        </div>
+
+        <div class="card">
+            <h3>✍️ Write Your Précis</h3>
+            <p class="instruction">Write a concise summary (25-50% of original length) that captures the main ideas:</p>
+            <textarea id="precis-input" placeholder="Write your précis here..." rows="8"></textarea>
+            <div class="input-info">
+                <span>Words: <span id="precis-word-count">0</span></span>
+                <div class="button-group">
+                    <button id="refresh-paragraph-btn" class="btn btn-outline">🔄 New Paragraph</button>
+                    <button id="check-btn" class="btn btn-secondary">Check Précis</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" class="section hidden">
+        <div class="card">
+            <h3>🎯 Your Score</h3>
+            <div class="score-display">
+                <div class="total-score">
+                    <span id="total-score">0</span>/10
+                </div>
+                <div class="score-breakdown">
+                    <div class="score-item">
+                        <span>Semantic Similarity:</span>
+                        <span id="semantic-score">0</span>/3
+                    </div>
+                    <div class="score-item">
+                        <span>AI Comparison:</span>
+                        <span id="ai-score">0</span>/4
+                    </div>
+                    <div class="score-item">
+                        <span>Grammar:</span>
+                        <span id="grammar-score">0</span>/2
+                    </div>
+                    <div class="score-item">
+                        <span>Length:</span>
+                        <span id="length-score">0</span>/1
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>💬 Feedback</h3>
+            <div id="feedback" class="feedback-text"></div>
+        </div>
+
+        <div class="card">
+            <h3>🤖 AI Reference Summary</h3>
+            <div id="ai-summary" class="text-display"></div>
+        </div>
+
+        <div class="actions">
+            <button id="try-again-btn" class="btn btn-primary">Try Another Challenge</button>
+            <button id="new-paragraph-btn" class="btn btn-secondary">New Paragraph</button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Evaluating your précis...</p>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+<script>
+// Analytics data from backend
+const analyticsData = {
+    avgScores: {
+        semantic: {{ stats.avg_semantic }},
+        ai: {{ stats.avg_ai }},
+        grammar: {{ stats.avg_grammar }},
+        length: {{ stats.avg_length }}
+    },
+    recentScores: [
+        {% for score in recent_scores %}
+        {
+            total: {{ score.total_score }},
+            semantic: {{ score.semantic_score }},
+            ai: {{ score.ai_score }},
+            grammar: {{ score.grammar_score }},
+            length: {{ score.length_score }},
+            date: '{{ score.timestamp.strftime("%m/%d") }}'
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+};
+
+// Performance Overview Chart
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+new Chart(performanceCtx, {
+    type: 'radar',
+    data: {
+        labels: ['Semantic', 'AI Comparison', 'Grammar', 'Length'],
+        datasets: [{
+            label: 'Your Average',
+            data: [
+                (analyticsData.avgScores.semantic / 3) * 100,
+                (analyticsData.avgScores.ai / 4) * 100,
+                (analyticsData.avgScores.grammar / 2) * 100,
+                (analyticsData.avgScores.length / 1) * 100
+            ],
+            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+            borderColor: 'rgba(102, 126, 234, 1)',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+// Progress Trend Chart
+const progressCtx = document.getElementById('progressChart').getContext('2d');
+new Chart(progressCtx, {
+    type: 'line',
+    data: {
+        labels: analyticsData.recentScores.map(s => s.date).reverse(),
+        datasets: [{
+            label: 'Total Score',
+            data: analyticsData.recentScores.map(s => s.total).reverse(),
+            borderColor: 'rgba(102, 126, 234, 1)',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 10
+            }
+        }
+    }
+});
+
+// Clear history functionality
+document.getElementById('clear-history-btn').addEventListener('click', function() {
+    if (confirm('Are you sure you want to clear all your attempt history? This action cannot be undone.')) {
+        fetch('/clear_history', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('History cleared successfully!');
+                location.reload();
+            } else {
+                alert('Error clearing history: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error.message);
+        });
+    }
+});
+</script>
+{% endblock %}

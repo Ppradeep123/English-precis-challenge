@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header>
+    <h1>📝 Précis Writing Challenge</h1>
+    <p>Professional AI-powered writing evaluation platform</p>
+</header>
+
+<div class="hero-section">
+    <div class="card">
+        <h2>Welcome to Précis Challenge</h2>
+        <p> </p>
+        {% if current_user.is_authenticated %}
+            <div class="cta-buttons">
+                <button id="home-start-btn" class="btn btn-primary">Start Challenge</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">View Dashboard</a>
+            </div>
+        {% else %}
+            <div class="cta-buttons">
+                <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary">Login</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="features-section">
+    <h2>Features</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <h3>🤖 AI Evaluation</h3>
+            <p>Advanced semantic similarity analysis using state-of-the-art language models</p>
+        </div>
+        <div class="feature-card">
+            <h3>📊 Detailed Scoring</h3>
+            <p>Comprehensive feedback on grammar, length, and content accuracy</p>
+        </div>
+        <div class="feature-card">
+            <h3>📈 Progress Tracking</h3>
+            <p>Monitor your improvement over time with detailed analytics</p>
+        </div>
+        <div class="feature-card">
+            <h3>🎯 Instant Feedback</h3>
+            <p>Get immediate results and suggestions for improvement</p>
+        </div>
+    </div>
+</div>
+
+<!-- Challenge Modal for Home Page -->
+{% if current_user.is_authenticated %}
+<div id="home-challenge-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📝 Quick Challenge</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="home-original-text" class="text-display"></div>
+            <div class="word-count">Words: <span id="home-word-count">0</span></div>
+            <textarea id="home-precis-input" placeholder="Write your précis here..." rows="6"></textarea>
+            <div class="input-info">
+                <span>Words: <span id="home-precis-word-count">0</span></span>
+                <button id="home-check-btn" class="btn btn-primary">Check Précis</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="home-results-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🎯 Your Results</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="score-display">
+                <div class="total-score">
+                    <span id="home-total-score">0</span>/10
+                </div>
+                <div class="score-breakdown">
+                    <div class="score-item">
+                        <span>Semantic:</span>
+                        <span id="home-semantic-score">0</span>/3
+                    </div>
+                    <div class="score-item">
+                        <span>AI Comparison:</span>
+                        <span id="home-ai-score">0</span>/4
+                    </div>
+                    <div class="score-item">
+                        <span>Grammar:</span>
+                        <span id="home-grammar-score">0</span>/2
+                    </div>
+                    <div class="score-item">
+                        <span>Length:</span>
+                        <span id="home-length-score">0</span>/1
+                    </div>
+                </div>
+            </div>
+            <div id="home-feedback" class="feedback-text"></div>
+            <div class="modal-actions">
+                <button id="home-try-again-btn" class="btn btn-primary">Try Again</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Full Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Home page challenge functionality
+let homeCurrentParagraph = '';
+
+document.getElementById('home-start-btn').addEventListener('click', startHomeChallenge);
+document.getElementById('home-check-btn').addEventListener('click', checkHomePrecis);
+document.getElementById('home-try-again-btn').addEventListener('click', startHomeChallenge);
+document.getElementById('home-precis-input').addEventListener('input', updateHomeWordCount);
+
+// Modal close functionality
+document.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', closeModals);
+});
+
+async function startHomeChallenge() {
+    try {
+        const response = await fetch('/get_paragraph', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            homeCurrentParagraph = data.paragraph;
+            document.getElementById('home-original-text').textContent = data.paragraph;
+            document.getElementById('home-word-count').textContent = data.word_count;
+            document.getElementById('home-precis-input').value = '';
+            updateHomeWordCount();
+            
+            closeModals();
+            document.getElementById('home-challenge-modal').classList.remove('hidden');
+        } else {
+            alert('Error loading paragraph: ' + data.error);
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
+}
+
+async function checkHomePrecis() {
+    const precisText = document.getElementById('home-precis-input').value.trim();
+    
+    if (!precisText) {
+        alert('Please write a précis before checking.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/evaluate_precis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                original_text: homeCurrentParagraph,
+                precis_text: precisText
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayHomeResults(data.results);
+            closeModals();
+            document.getElementById('home-results-modal').classList.remove('hidden');
+        } else {
+            alert('Evaluation error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
+}
+
+function displayHomeResults(results) {
+    document.getElementById('home-total-score').textContent = results.total_score;
+    document.getElementById('home-semantic-score').textContent = results.semantic_score;
+    document.getElementById('home-ai-score').textContent = results.ai_comparison_score;
+    document.getElementById('home-grammar-score').textContent = results.grammar_score;
+    document.getElementById('home-length-score').textContent = results.length_score;
+    document.getElementById('home-feedback').textContent = results.feedback;
+}
+
+function updateHomeWordCount() {
+    const words = document.getElementById('home-precis-input').value.trim().split(/\s+/).filter(word => word.length > 0);
+    document.getElementById('home-precis-word-count').textContent = words.length;
+}
+
+function closeModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.add('hidden');
+    });
+}
+</script>
+{% endif %}
+{% endblock %}
